@@ -111,6 +111,13 @@
 
   .progress-bar { height: 6px; background: var(--surface2); border-radius: 3px; overflow: hidden; }
   .progress-bar .fill { height: 100%; border-radius: 3px; transition: width .6s ease; }
+
+  .filter-btn { background: var(--surface2); border: 1px solid var(--border); color: var(--muted); padding: 4px 12px; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 500; transition: all .15s; }
+  .filter-btn:hover { color: var(--text); }
+  .filter-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .stuck-badge { display: inline-block; background: rgba(239,68,68,.2); color: var(--red); border-radius: 99px; padding: 1px 7px; font-size: 11px; font-weight: 700; margin-left: 4px; }
+  tr.stuck-critical td { background: rgba(239,68,68,.05); }
+  tr.stuck-warning td { background: rgba(245,158,11,.05); }
 </style>
 </head>
 <body>
@@ -138,6 +145,7 @@
   <button onclick="showTab('performance')">Performance</button>
   <button onclick="showTab('velocity')">Velocity</button>
   <button onclick="showTab('security')">Security</button>
+  <button onclick="showTab('stuck')">🚨 Stuck Tickets <span id="stuck-count-badge"></span></button>
 </nav>
 
 <!-- DATA INJECTED BY SCHEDULED TASK — DO NOT EDIT MANUALLY -->
@@ -267,6 +275,40 @@
             <tbody><tr><td colspan="4" class="no-data">Loading…</td></tr></tbody>
           </table>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- STUCK TICKETS -->
+  <div class="tab-content" id="tab-stuck">
+    <div class="kpi-grid" id="stuck-kpis"></div>
+    <div class="section">
+      <div class="section-header">
+        <h2>🚨 Stuck OOSLA Tickets — No Movement in 7+ Days</h2>
+        <span style="font-size:12px;color:var(--muted)" id="stuck-as-of"></span>
+      </div>
+      <div class="section-body">
+        <div style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap" id="stuck-filters">
+          <button class="filter-btn active" onclick="filterStuck('all')">All</button>
+          <button class="filter-btn" onclick="filterStuck('Bug')">Bugs</button>
+          <button class="filter-btn" onclick="filterStuck('Security Defect')">Security</button>
+          <button class="filter-btn" onclick="filterStuck('Reliability Defect')">Reliability</button>
+          <button class="filter-btn" onclick="filterStuck('Privacy')">Privacy</button>
+          <button class="filter-btn" onclick="filterStuck('Attribution Defect')">Attribution</button>
+        </div>
+        <table id="stuck-table">
+          <thead><tr><th>Ticket</th><th>Type</th><th>Priority</th><th>Manager</th><th>Assignee</th><th>Status</th><th>Due Date</th><th>Days Overdue</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="section">
+      <div class="section-header"><h2>Stuck Tickets by Manager</h2></div>
+      <div class="section-body">
+        <table id="stuck-by-manager-table">
+          <thead><tr><th>Manager</th><th>Stuck Count</th><th>Worst Overdue (days)</th><th>Types</th></tr></thead>
+          <tbody></tbody>
+        </table>
       </div>
     </div>
   </div>
@@ -574,6 +616,90 @@ function scheduleRefresh() {
   setInterval(updateCountdown, 1000);
   setTimeout(() => { loadData(); scheduleRefresh(); }, REFRESH_MS);
 }
+
+// ── STUCK TICKETS DATA (fetched 2026-05-04) ──────────────────────────────
+const STUCK_DATA = {"as_of":"2026-05-04","stuck":[{"key":"SMSFE-24","type":"Bug","priority":"P2","manager":"Kunal Ghadge","assignee":"Kartey Hingu","status":"Open","due":"2025-11-20","days_overdue":-165,"url":"https://jira.cloud.intuit.com/browse/SMSFE-24"},{"key":"ABTP-581","type":"Bug","priority":"P2","manager":"Mohsin Patel","assignee":"Nirbhaya .","status":"To Do","due":"2025-12-04","days_overdue":-151,"url":"https://jira.cloud.intuit.com/browse/ABTP-581"},{"key":"PAYC-13795","type":"Bug","priority":"P2","manager":"Ankit Agarwal","assignee":"Arindam Das","status":"Open","due":"2025-12-17","days_overdue":-138,"url":"https://jira.cloud.intuit.com/browse/PAYC-13795"},{"key":"DEFT-64","type":"Bug","priority":"P2","manager":"Sachin Kulkarni","assignee":"Sachin Kulkarni","status":"Open","due":"2026-02-18","days_overdue":-75,"url":"https://jira.cloud.intuit.com/browse/DEFT-64"},{"key":"PAYC-16059","type":"Bug","priority":"P2","manager":"Ankit Agarwal","assignee":"Praveena Bhajipale","status":"Open","due":"2026-02-27","days_overdue":-66,"url":"https://jira.cloud.intuit.com/browse/PAYC-16059"},{"key":"OPMGT-3434","type":"Bug","priority":"P2","manager":"Hemanth NG","assignee":"Hemanth NG","status":"Open","due":"2026-04-24","days_overdue":-10,"url":"https://jira.cloud.intuit.com/browse/OPMGT-3434"},{"key":"MERU-953","type":"Bug","priority":"P2","manager":"Hemanth NG","assignee":"Hemanth NG","status":"Open","due":"2026-04-27","days_overdue":-7,"url":"https://jira.cloud.intuit.com/browse/MERU-953"},{"key":"OBSV-4863","type":"Security Defect","priority":"P2","manager":"Girish Hegde","assignee":"Sachin Kulkarni","status":"Open","due":"2025-10-30","days_overdue":-186,"url":"https://jira.cloud.intuit.com/browse/OBSV-4863"},{"key":"VEN-588","type":"Security Defect","priority":"P2","manager":"Sachin Kulkarni","assignee":"Sachin Kulkarni","status":"Open","due":"2026-01-12","days_overdue":-112,"url":"https://jira.cloud.intuit.com/browse/VEN-588"},{"key":"IAET-9913","type":"Security Defect","priority":"P2","manager":"Mohsin Patel","assignee":"Ankur Sharma","status":"Open","due":"2026-03-26","days_overdue":-39,"url":"https://jira.cloud.intuit.com/browse/IAET-9913"},{"key":"DDS-3184","type":"Privacy","priority":"P2","manager":"Mohsin Patel","assignee":"Ankur Sharma","status":"Open","due":"2026-03-31","days_overdue":-34,"url":"https://jira.cloud.intuit.com/browse/DDS-3184"},{"key":"OBSV-4279","type":"Security Defect","priority":"P3","manager":"Girish Hegde","assignee":"Girish Hegde","status":"Open","due":"2026-03-31","days_overdue":-34,"url":"https://jira.cloud.intuit.com/browse/OBSV-4279"},{"key":"DDS-3600","type":"Security Defect","priority":"P2","manager":"Mohsin Patel","assignee":"Swaroop Shivarudrappa","status":"Open","due":"2026-04-09","days_overdue":-25,"url":"https://jira.cloud.intuit.com/browse/DDS-3600"},{"key":"DDS-3601","type":"Security Defect","priority":"P2","manager":"Mohsin Patel","assignee":"Swaroop Shivarudrappa","status":"Open","due":"2026-04-09","days_overdue":-25,"url":"https://jira.cloud.intuit.com/browse/DDS-3601"},{"key":"VEN-699","type":"Privacy","priority":"P2","manager":"Sachin Kulkarni","assignee":"Sachin Kulkarni","status":"Open","due":"2026-04-10","days_overdue":-24,"url":"https://jira.cloud.intuit.com/browse/VEN-699"},{"key":"VEN-700","type":"Privacy","priority":"P2","manager":"Sachin Kulkarni","assignee":"Sachin Kulkarni","status":"Open","due":"2026-04-10","days_overdue":-24,"url":"https://jira.cloud.intuit.com/browse/VEN-700"},{"key":"PRTL-17189","type":"Security Defect","priority":"P3","manager":"Alexander Tickle","assignee":"Yash Dabhade","status":"Open","due":"2026-04-12","days_overdue":-22,"url":"https://jira.cloud.intuit.com/browse/PRTL-17189"},{"key":"DDS-3393","type":"Security Defect","priority":"P3","manager":"Mohsin Patel","assignee":"Ankur Sharma","status":"Open","due":"2026-04-13","days_overdue":-21,"url":"https://jira.cloud.intuit.com/browse/DDS-3393"},{"key":"DDS-3395","type":"Security Defect","priority":"P3","manager":"Mohsin Patel","assignee":"Ankur Sharma","status":"Open","due":"2026-04-13","days_overdue":-21,"url":"https://jira.cloud.intuit.com/browse/DDS-3395"},{"key":"DDS-3397","type":"Privacy","priority":"P2","manager":"Mohsin Patel","assignee":"Ankur Sharma","status":"Open","due":"2026-04-14","days_overdue":-20,"url":"https://jira.cloud.intuit.com/browse/DDS-3397"},{"key":"CLOP-37131","type":"Security Defect","priority":"P2","manager":"Mohsin Patel","assignee":"Mohsin Patel","status":"Open","due":"2026-04-17","days_overdue":-17,"url":"https://jira.cloud.intuit.com/browse/CLOP-37131"},{"key":"IAET-10123","type":"Privacy","priority":"P2","manager":"Mohsin Patel","assignee":"Mohsin Patel","status":"Open","due":"2026-04-19","days_overdue":-15,"url":"https://jira.cloud.intuit.com/browse/IAET-10123"},{"key":"IAET-10124","type":"Security Defect","priority":"P2","manager":"Mohsin Patel","assignee":"Abhishek Bagepalli","status":"Open","due":"2026-04-19","days_overdue":-15,"url":"https://jira.cloud.intuit.com/browse/IAET-10124"},{"key":"VEN-1202","type":"Security Defect","priority":"P2","manager":"Sachin Kulkarni","assignee":"Sachin Kulkarni","status":"Open","due":"2026-04-22","days_overdue":-12,"url":"https://jira.cloud.intuit.com/browse/VEN-1202"},{"key":"DXS-17988","type":"Privacy","priority":"P2","manager":"Rajesh Naik","assignee":"Sameer Kumar","status":"Open","due":"2026-04-25","days_overdue":-9,"url":"https://jira.cloud.intuit.com/browse/DXS-17988"},{"key":"ATETOOLS-2617","type":"Security Defect","priority":"P2","manager":"An Hoang","assignee":"Purushotham Dwadasi","status":"Blocked","due":"2026-04-29","days_overdue":-5,"url":"https://jira.cloud.intuit.com/browse/ATETOOLS-2617"},{"key":"PECAP-2762","type":"Attribution Defect","priority":"P2","manager":"Hemanth NG","assignee":"Hemanth NG","status":"Open","due":"2025-08-12","days_overdue":-265,"url":"https://jira.cloud.intuit.com/browse/PECAP-2762"},{"key":"TSH-8765","type":"Attribution Defect","priority":"P2","manager":"Hemanth NG","assignee":"Hemanth NG","status":"Open","due":"2025-09-21","days_overdue":-225,"url":"https://jira.cloud.intuit.com/browse/TSH-8765"},{"key":"METR-423","type":"Attribution Defect","priority":"P3","manager":"Mohsin Patel","assignee":"Mohsin Patel","status":"Open","due":"2026-02-16","days_overdue":-77,"url":"https://jira.cloud.intuit.com/browse/METR-423"},{"key":"IAET-10171","type":"Attribution Defect","priority":"P2","manager":"Mohsin Patel","assignee":"Viswanatha Devagudi","status":"Open","due":"2026-04-24","days_overdue":-10,"url":"https://jira.cloud.intuit.com/browse/IAET-10171"},{"key":"OPMGT-3041","type":"Reliability Defect","priority":"P3","manager":"Hemanth NG","assignee":"Hemanth NG","status":"Open","due":"2026-03-11","days_overdue":-54,"url":"https://jira.cloud.intuit.com/browse/OPMGT-3041"},{"key":"OBSV-4628","type":"Reliability Defect","priority":"P2","manager":"Girish Hegde","assignee":"Girish Hegde","status":"Open","due":"2026-04-03","days_overdue":-31,"url":"https://jira.cloud.intuit.com/browse/OBSV-4628"},{"key":"OPMGT-3232","type":"Reliability Defect","priority":"P2","manager":"Hemanth NG","assignee":"Hemanth NG","status":"Open","due":"2026-04-03","days_overdue":-31,"url":"https://jira.cloud.intuit.com/browse/OPMGT-3232"},{"key":"OPMGT-3244","type":"Reliability Defect","priority":"P2","manager":"Hemanth NG","assignee":"Hemanth NG","status":"Open","due":"2026-04-08","days_overdue":-26,"url":"https://jira.cloud.intuit.com/browse/OPMGT-3244"},{"key":"OBSV-4678","type":"Reliability Defect","priority":"P2","manager":"Girish Hegde","assignee":"Girish Hegde","status":"Open","due":"2026-04-17","days_overdue":-17,"url":"https://jira.cloud.intuit.com/browse/OBSV-4678"},{"key":"OPMGT-3245","type":"Reliability Defect","priority":"P2","manager":"Hemanth NG","assignee":"Hemanth NG","status":"Open","due":"2026-04-17","days_overdue":-17,"url":"https://jira.cloud.intuit.com/browse/OPMGT-3245"},{"key":"OPMGT-3246","type":"Reliability Defect","priority":"P2","manager":"Hemanth NG","assignee":"Hemanth NG","status":"Open","due":"2026-04-17","days_overdue":-17,"url":"https://jira.cloud.intuit.com/browse/OPMGT-3246"},{"key":"OPMGT-3247","type":"Reliability Defect","priority":"P2","manager":"Hemanth NG","assignee":"Hemanth NG","status":"Open","due":"2026-04-17","days_overdue":-17,"url":"https://jira.cloud.intuit.com/browse/OPMGT-3247"},{"key":"OPMGT-3248","type":"Reliability Defect","priority":"P2","manager":"Hemanth NG","assignee":"Hemanth NG","status":"Open","due":"2026-04-17","days_overdue":-17,"url":"https://jira.cloud.intuit.com/browse/OPMGT-3248"},{"key":"OPMGT-3249","type":"Reliability Defect","priority":"P2","manager":"Hemanth NG","assignee":"Hemanth NG","status":"Open","due":"2026-04-17","days_overdue":-17,"url":"https://jira.cloud.intuit.com/browse/OPMGT-3249"},{"key":"OPMGT-3250","type":"Reliability Defect","priority":"P2","manager":"Hemanth NG","assignee":"Hemanth NG","status":"Open","due":"2026-04-17","days_overdue":-17,"url":"https://jira.cloud.intuit.com/browse/OPMGT-3250"},{"key":"OBSV-4744","type":"Reliability Defect","priority":"P2","manager":"Girish Hegde","assignee":"Girish Hegde","status":"Open","due":"2026-04-20","days_overdue":-14,"url":"https://jira.cloud.intuit.com/browse/OBSV-4744"},{"key":"OPMGT-3310","type":"Reliability Defect","priority":"P2","manager":"Hemanth NG","assignee":"Hemanth NG","status":"Open","due":"2026-04-21","days_overdue":-13,"url":"https://jira.cloud.intuit.com/browse/OPMGT-3310"},{"key":"OPMGT-3317","type":"Reliability Defect","priority":"P2","manager":"Hemanth NG","assignee":"Hemanth NG","status":"Open","due":"2026-04-22","days_overdue":-12,"url":"https://jira.cloud.intuit.com/browse/OPMGT-3317"},{"key":"OPMGT-3318","type":"Reliability Defect","priority":"P2","manager":"Hemanth NG","assignee":"Hemanth NG","status":"Open","due":"2026-04-22","days_overdue":-12,"url":"https://jira.cloud.intuit.com/browse/OPMGT-3318"},{"key":"OPMGT-3321","type":"Reliability Defect","priority":"P2","manager":"Hemanth NG","assignee":"Hemanth NG","status":"Open","due":"2026-04-23","days_overdue":-11,"url":"https://jira.cloud.intuit.com/browse/OPMGT-3321"},{"key":"OPMGT-3323","type":"Reliability Defect","priority":"P2","manager":"Hemanth NG","assignee":"Hemanth NG","status":"Open","due":"2026-04-23","days_overdue":-11,"url":"https://jira.cloud.intuit.com/browse/OPMGT-3323"},{"key":"OPMGT-3324","type":"Reliability Defect","priority":"P2","manager":"Hemanth NG","assignee":"Hemanth NG","status":"Open","due":"2026-04-23","days_overdue":-11,"url":"https://jira.cloud.intuit.com/browse/OPMGT-3324"},{"key":"OBSV-4822","type":"Reliability Defect","priority":"P2","manager":"Girish Hegde","assignee":"Girish Hegde","status":"Open","due":"2026-04-30","days_overdue":-4,"url":"https://jira.cloud.intuit.com/browse/OBSV-4822"}]};
+
+let stuckFilter = 'all';
+
+function filterStuck(type) {
+  stuckFilter = type;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  event.target.classList.add('active');
+  renderStuckTable();
+}
+
+function renderStuckTable() {
+  const tickets = stuckFilter === 'all'
+    ? STUCK_DATA.stuck
+    : STUCK_DATA.stuck.filter(t => t.type === stuckFilter || (stuckFilter === 'Security Defect' && t.type === 'Privacy'));
+
+  const tbody = document.querySelector('#stuck-table tbody');
+  tbody.innerHTML = tickets.map(t => {
+    const isCritical = t.days_overdue <= -30;
+    const isWarning = t.days_overdue <= -14 && !isCritical;
+    const rowClass = isCritical ? 'stuck-critical' : isWarning ? 'stuck-warning' : '';
+    const overdueBadge = t.days_overdue <= -30
+      ? `<span class="pill red">${Math.abs(t.days_overdue)}d</span>`
+      : t.days_overdue <= -14
+      ? `<span class="pill yellow">${Math.abs(t.days_overdue)}d</span>`
+      : `<span class="pill blue">${Math.abs(t.days_overdue)}d</span>`;
+    const priorityColor = t.priority === 'P2' ? 'red' : t.priority === 'P1' ? 'red' : 'yellow';
+    return `<tr class="${rowClass}">
+      <td><a href="${t.url}" target="_blank" style="color:var(--accent);font-family:monospace;font-size:12px">${t.key}</a></td>
+      <td style="font-size:12px">${t.type}</td>
+      <td><span class="pill ${priorityColor}">${t.priority}</span></td>
+      <td style="font-size:12px">${t.manager}</td>
+      <td style="font-size:12px;color:var(--muted)">${t.assignee}</td>
+      <td><span class="pill yellow">${t.status}</span></td>
+      <td style="font-size:12px">${t.due}</td>
+      <td>${overdueBadge}</td>
+    </tr>`;
+  }).join('') || '<tr><td colspan="8" class="no-data">No stuck tickets in this category</td></tr>';
+}
+
+function renderStuck() {
+  const stuck = STUCK_DATA.stuck;
+  document.getElementById('stuck-as-of').textContent = `As of ${STUCK_DATA.as_of}`;
+  document.getElementById('stuck-count-badge').innerHTML = `<span class="stuck-badge">${stuck.length}</span>`;
+
+  // KPIs
+  const critical = stuck.filter(t => t.days_overdue <= -30).length;
+  const p2count = stuck.filter(t => t.priority === 'P2').length;
+  const worstDays = Math.abs(Math.min(...stuck.map(t => t.days_overdue)));
+  document.getElementById('stuck-kpis').innerHTML = [
+    kpiCard('Stuck Tickets', stuck.length, 'no movement 7+ days', 'red'),
+    kpiCard('Critical (30d+ overdue)', critical, 'immediate action needed', 'red'),
+    kpiCard('P2 Stuck', p2count, 'high priority blocked', 'yellow'),
+    kpiCard('Worst Overdue', `${worstDays}d`, 'oldest stuck ticket', 'red'),
+  ].join('');
+
+  // By manager table
+  const byMgr = {};
+  stuck.forEach(t => {
+    if (!byMgr[t.manager]) byMgr[t.manager] = [];
+    byMgr[t.manager].push(t);
+  });
+  const mgrRows = Object.entries(byMgr)
+    .sort((a,b) => b[1].length - a[1].length)
+    .map(([mgr, items]) => {
+      const worst = Math.abs(Math.min(...items.map(t => t.days_overdue)));
+      const types = [...new Set(items.map(t => t.type.replace(' Defect','').replace('Security','Sec')))].join(', ');
+      const cls = worst >= 30 ? 'red' : worst >= 14 ? 'yellow' : 'blue';
+      return `<tr>
+        <td>${mgr}</td>
+        <td><span class="pill ${cls}">${items.length}</span></td>
+        <td>${worst}d</td>
+        <td style="font-size:12px;color:var(--muted)">${types}</td>
+      </tr>`;
+    }).join('');
+  document.querySelector('#stuck-by-manager-table tbody').innerHTML = mgrRows;
+
+  renderStuckTable();
+}
+
+// Call renderStuck on load
+renderStuck();
 
 loadData();
 scheduleRefresh();
