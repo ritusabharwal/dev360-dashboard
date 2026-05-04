@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mohan — Dev360 Dashboard</title>
+<style>
+  :root {
+    --bg: #0f1117;
+    --surface: #1a1d27;
+    --surface2: #22263a;
+    --border: #2e3250;
+    --text: #e2e8f0;
+    --muted: #8892b0;
+    --green: #22c55e;
+    --yellow: #f59e0b;
+    --red: #ef4444;
+    --blue: #3b82f6;
+    --purple: #a855f7;
+    --accent: #6366f1;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-size: 14px; }
+
+  header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 16px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky; top: 0; z-index: 100;
+  }
+  header h1 { font-size: 18px; font-weight: 700; color: #fff; }
+  header h1 span { color: var(--accent); }
+  .meta { font-size: 12px; color: var(--muted); display: flex; gap: 16px; align-items: center; }
+  .badge { padding: 2px 8px; border-radius: 99px; font-size: 11px; font-weight: 600; }
+  .badge.green { background: rgba(34,197,94,.15); color: var(--green); }
+  .badge.yellow { background: rgba(245,158,11,.15); color: var(--yellow); }
+  .badge.red { background: rgba(239,68,68,.15); color: var(--red); }
+
+  nav { display: flex; gap: 2px; background: var(--surface); padding: 0 24px; border-bottom: 1px solid var(--border); overflow-x: auto; }
+  nav button {
+    background: none; border: none; color: var(--muted); padding: 12px 16px;
+    cursor: pointer; font-size: 13px; font-weight: 500; white-space: nowrap;
+    border-bottom: 2px solid transparent; transition: all .2s;
+  }
+  nav button:hover { color: var(--text); }
+  nav button.active { color: #fff; border-bottom-color: var(--accent); }
+
+  main { padding: 24px; max-width: 1400px; margin: 0 auto; }
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+
+  .kpi-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px; }
+  .kpi-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 10px; padding: 16px;
+  }
+  .kpi-card .label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; margin-bottom: 8px; }
+  .kpi-card .value { font-size: 28px; font-weight: 700; }
+  .kpi-card .sub { font-size: 12px; color: var(--muted); margin-top: 4px; }
+  .kpi-card.green { border-left: 3px solid var(--green); }
+  .kpi-card.yellow { border-left: 3px solid var(--yellow); }
+  .kpi-card.red { border-left: 3px solid var(--red); }
+  .kpi-card.blue { border-left: 3px solid var(--blue); }
+
+  .section { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; margin-bottom: 20px; overflow: hidden; }
+  .section-header { padding: 14px 18px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+  .section-header h2 { font-size: 14px; font-weight: 600; }
+  .section-body { padding: 18px; overflow-x: auto; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { text-align: left; font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; padding: 8px 12px; border-bottom: 1px solid var(--border); }
+  td { padding: 10px 12px; border-bottom: 1px solid rgba(46,50,80,.5); }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: rgba(255,255,255,.03); }
+
+  .pill { display: inline-block; padding: 2px 8px; border-radius: 99px; font-size: 11px; font-weight: 600; }
+  .pill.green { background: rgba(34,197,94,.15); color: var(--green); }
+  .pill.yellow { background: rgba(245,158,11,.15); color: var(--yellow); }
+  .pill.red { background: rgba(239,68,68,.15); color: var(--red); }
+  .pill.blue { background: rgba(59,130,246,.15); color: var(--blue); }
+
+  .loading { text-align: center; padding: 60px; color: var(--muted); }
+  .loading .spinner { width: 40px; height: 40px; border: 3px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 16px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .error-banner { background: rgba(239,68,68,.1); border: 1px solid rgba(239,68,68,.3); border-radius: 8px; padding: 14px 18px; color: var(--red); margin-bottom: 20px; display: none; }
+
+  .refresh-bar { font-size: 12px; color: var(--muted); display: flex; align-items: center; gap: 8px; }
+  .refresh-bar .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .3; } }
+
+  .timeframe-toggle { display: flex; background: var(--surface2); border-radius: 8px; padding: 3px; gap: 2px; }
+  .timeframe-toggle button {
+    background: none; border: none; color: var(--muted); padding: 5px 14px;
+    border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 600; transition: all .15s;
+  }
+  .timeframe-toggle button.active { background: var(--accent); color: #fff; }
+
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media (max-width: 768px) { .two-col { grid-template-columns: 1fr; } }
+
+  .concern-list { list-style: none; }
+  .concern-list li { padding: 10px 0; border-bottom: 1px solid rgba(46,50,80,.5); font-size: 13px; display: flex; gap: 10px; align-items: flex-start; }
+  .concern-list li:last-child { border-bottom: none; }
+  .concern-list .icon { font-size: 16px; flex-shrink: 0; margin-top: 1px; }
+
+  .no-data { color: var(--muted); font-size: 13px; padding: 20px 0; text-align: center; }
+
+  .progress-bar { height: 6px; background: var(--surface2); border-radius: 3px; overflow: hidden; }
+  .progress-bar .fill { height: 100%; border-radius: 3px; transition: width .6s ease; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Dev360 — <span>Mohan</span></h1>
+  <div class="meta">
+    <div class="timeframe-toggle">
+      <button id="btn-7d" class="active" onclick="setTimeframe('7 Days')">7 Days</button>
+      <button id="btn-30d" onclick="setTimeframe('30 Days')">30 Days</button>
+    </div>
+    <div class="refresh-bar">
+      <div class="dot"></div>
+      <span id="last-updated">Loading…</span>
+    </div>
+    <span id="next-refresh"></span>
+  </div>
+</header>
+
+<nav>
+  <button class="active" onclick="showTab('overview')">Overview</button>
+  <button onclick="showTab('availability')">Availability</button>
+  <button onclick="showTab('incidents')">Incidents</button>
+  <button onclick="showTab('quality')">Quality</button>
+  <button onclick="showTab('performance')">Performance</button>
+  <button onclick="showTab('velocity')">Velocity</button>
+  <button onclick="showTab('security')">Security</button>
+</nav>
+
+<!-- DATA INJECTED BY SCHEDULED TASK — DO NOT EDIT MANUALLY -->
+<script id="dashboard-data" type="application/json">{"generated_at":"2026-04-29T02:19:54Z","7 Days":{"generated_at":"2026-04-29T02:19:54Z","availability":{"assets_total":516,"assets_meeting":389,"manager_breakdown":[{"status":"CRITICAL","manager":"Mohan Naik","criteria":"User Experience Availability","availability_pct":"94.4284%","pct_above_target":"100.0%"},{"status":"CRITICAL","manager":"Mohan Naik","criteria":"User Experience Availability","availability_pct":"94.9662%","pct_above_target":"100.0%"},{"status":"CRITICAL","manager":"Mohsin Patel","criteria":"User Experience Availability","availability_pct":"89.3796%","pct_above_target":"55.6%"},{"status":"AT RISK","manager":"Adi Garg","criteria":"Service Availability","availability_pct":"99.5034%","pct_above_target":"87.5%"},{"status":"AT RISK","manager":"Adi Garg","criteria":"User Experience Availability","availability_pct":"99.6170%","pct_above_target":"100.0%"},{"status":"AT RISK","manager":"Alexander Tickle","criteria":"User Experience Availability","availability_pct":"99.8020%","pct_above_target":"55.6%"},{"status":"AT RISK","manager":"Amish Gandhi","criteria":"User Experience Availability","availability_pct":"99.4942%","pct_above_target":"50.0%"},{"status":"AT RISK","manager":"Joel Atwood","criteria":"User Experience Availability","availability_pct":"99.6747%","pct_above_target":"42.9%"},{"status":"AT RISK","manager":"Mohan Naik","criteria":"Service Availability","availability_pct":"99.8496%","pct_above_target":"0.0%"},{"status":"AT RISK","manager":"Mohsin Patel","criteria":"Service Availability","availability_pct":"99.2603%","pct_above_target":"72.7%"},{"status":"AT RISK","manager":"Rajesh Kaja","criteria":"Service Availability","availability_pct":"99.9204%","pct_above_target":"91.5%"},{"status":"AT RISK","manager":"Rajesh Kaja","criteria":"User Experience Availability","availability_pct":"99.5244%","pct_above_target":"63.0%"},{"status":"AT RISK","manager":"Siddhartha Sharma","criteria":"User Experience Availability","availability_pct":"99.8806%","pct_above_target":"83.3%"},{"status":"AT RISK","manager":"Virginia Messina","criteria":"Service Availability","availability_pct":"99.9444%","pct_above_target":"85.7%"},{"status":"GOOD","manager":"Alexander Tickle","criteria":"Service Availability","availability_pct":"99.9946%","pct_above_target":"77.8%"},{"status":"GOOD","manager":"Amish Gandhi","criteria":"Service Availability","availability_pct":"99.9968%","pct_above_target":"83.3%"},{"status":"GOOD","manager":"Joel Atwood","criteria":"Service Availability","availability_pct":"99.9995%","pct_above_target":"88.7%"},{"status":"GOOD","manager":"Mohan Naik","criteria":"Service Availability","availability_pct":"99.9630%","pct_above_target":"100.0%"},{"status":"GOOD","manager":"Nimisha Shrivastava","criteria":"Service Availability","availability_pct":"99.9998%","pct_above_target":"87.5%"},{"status":"GOOD","manager":"Nimisha Shrivastava","criteria":"User Experience Availability","availability_pct":"99.9772%","pct_above_target":"83.3%"},{"status":"GOOD","manager":"Siddhartha Sharma","criteria":"Service Availability","availability_pct":"99.9970%","pct_above_target":"88.9%"},{"status":"GOOD","manager":"Surya Mohan","criteria":"Service Availability","availability_pct":"99.9999%","pct_above_target":"80.0%"}],"failing_assets":[{"asset":"dev.devx.developerappsui","tier":"Tier 1","manager":"nimisha_shrivastava","criteria":"User Experience Availability (%)","measure":"99.974%","target":"99.990%","remediation":""},{"asset":"dev.devx.developerappsui","tier":"Tier 1","manager":"nimisha_shrivastava","criteria":"Tracing enabled","measure":"Not Enabled","target":"Enabled","remediation":"Onboard to Tracing"},{"asset":"dev.devx.developerportalexperience","tier":"Tier 2","manager":"alexander_tickle","criteria":"User Experience Availability (%)","measure":"99.832%","target":"99.950%","remediation":""},{"asset":"sbg.idg.devx.developer","tier":"Tier 2","manager":"nimisha_shrivastava","criteria":"Service Availability (%)","measure":"99.994%","target":"99.995%","remediation":""},{"asset":"t4i.wft.enterprisesearch","tier":"Tier 2","manager":"joel_atwood","criteria":"User Experience Availability (%)","measure":"99.679%","target":"99.950%","remediation":""},{"asset":"dev.devx.developerportaldashboard","tier":"Tier 2","manager":"alexander_tickle","criteria":"User Experience Availability (%)","measure":"99.875%","target":"99.950%","remediation":""},{"asset":"devsuccess.aidaragingestionservice","tier":"Tier 2","manager":"mohsin_patel","criteria":"Alert2Inc Enabled","measure":"Not Enabled","target":"Enabled","remediation":"Onboard to Alert2Inc"},{"asset":"workforce.wfmgmt.candidateworkflowlistui","tier":"Tier 3","manager":"rajesh_kaja","criteria":"User Experience Availability (%)","measure":"89.899%","target":"99.900%","remediation":""},{"asset":"workforce.talentmgmt.widsexperthiring","tier":"Tier 3","manager":"rajesh_kaja","criteria":"User Experience Availability (%)","measure":"95.389%","target":"99.900%","remediation":""},{"asset":"workforce.wfmgmt.candidateportalui","tier":"Tier 3","manager":"rajesh_kaja","criteria":"User Experience Availability (%)","measure":"91.232%","target":"99.900%","remediation":""},{"asset":"workforce.wfmgmt.intuitcandidateportal","tier":"Tier 3","manager":"rajesh_kaja","criteria":"User Experience Availability (%)","measure":"94.462%","target":"99.900%","remediation":""},{"asset":"dev.patterns.oirwebapp","tier":"Tier 3","manager":"mohsin_patel","criteria":"User Experience Availability (%)","measure":"94.310%","target":"99.900%","remediation":""},{"asset":"dev.patterns.oirwebplugin","tier":"Tier 3","manager":"mohsin_patel","criteria":"User Experience Availability (%)","measure":"93.758%","target":"99.900%","remediation":""},{"asset":"dev.devx.automatedtoolingservice","tier":"Tier 3","manager":"mohsin_patel","criteria":"Service Availability (%)","measure":"97.488%","target":"99.950%","remediation":""},{"asset":"entarch.solarch.arclabapi","tier":"Tier 3","manager":"mohan_naik","criteria":"Service Availability (%)","measure":"99.849%","target":"99.950%","remediation":""},{"asset":"t4i.wft.employeeprofile","tier":"Tier 3","manager":"joel_atwood","criteria":"User Experience Availability (%)","measure":"98.870%","target":"99.900%","remediation":""},{"asset":"t4i.wft.onboarding","tier":"Tier 3","manager":"siddhartha_sharma","criteria":"User Experience Availability (%)","measure":"99.342%","target":"99.900%","remediation":""},{"asset":"dev.devx.devportalmcpremote","tier":"Tier 3","manager":"alexander_tickle","criteria":"Service Availability (%)","measure":"98.135%","target":"99.950%","remediation":""},{"asset":"workforce.wfmgmt.widsemponboardingui","tier":"Tier 3","manager":"rajesh_kaja","criteria":"User Experience Availability (%)","measure":"97.152%","target":"99.900%","remediation":""},{"asset":"t4i.googleacctprovisioning","tier":"Tier 3","manager":"virginia_messina","criteria":"Service Availability (%)","measure":"99.915%","target":"99.950%","remediation":""}]},"incidents":{"total_incidents":null,"total_outages":null,"avg_mttd":null,"avg_mttr":null,"leaderboard":[]},"quality":{"total_oosla":null,"p0_p1":null,"avg_coverage":null,"oosla_by_manager":[],"coverage_assets":[]},"performance":{"avg_page_ready":null,"avg_interaction_latency":null,"assets":[]},"velocity":{"pr_velocity":null,"release_velocity":null,"time_to_merge":null,"pr_periods":[],"release_periods":[]},"security":{"exploitable_cves":null,"non_compliant":null,"assets":[]},"concerns":[{"icon":"🔴","text":"Mohan Naik (direct): UX Availability CRITICAL at 94.4% — far below T1 target of 99.99%"},{"icon":"🔴","text":"Mohsin Patel: UX Availability CRITICAL at 89.4% — dev.devx.automatedtoolingservice at 97.5% service avail"},{"icon":"🔴","text":"Rajesh Kaja: 5+ assets with severe UX degradation — candidateworkflowlistui 89.9%, candidateportalui 91.2%"},{"icon":"⚠️","text":"25% of 516 assets (127) not meeting availability targets across the org"},{"icon":"⚠️","text":"Mohan Naik Service Availability: 0% assets above target in one rollup — needs investigation"}]},"30 Days":{"generated_at":"2026-04-29T02:19:54Z","availability":{"assets_total":null,"assets_meeting":null,"manager_breakdown":[],"failing_assets":[]},"incidents":{"total_incidents":null,"total_outages":null,"avg_mttd":null,"avg_mttr":null,"leaderboard":[]},"quality":{"total_oosla":null,"p0_p1":null,"avg_coverage":null,"oosla_by_manager":[],"coverage_assets":[]},"performance":{"avg_page_ready":null,"avg_interaction_latency":null,"assets":[]},"velocity":{"pr_velocity":null,"release_velocity":null,"time_to_merge":null,"pr_periods":[],"release_periods":[]},"security":{"exploitable_cves":null,"non_compliant":null,"assets":[]},"concerns":[{"icon":"⚠️","text":"30-day data not yet fetched — will populate on next scheduled run."}]}}</script>
+
+<main>
+  <div class="error-banner" id="error-banner"></div>
+
+  <!-- OVERVIEW -->
+  <div class="tab-content active" id="tab-overview">
+    <div class="kpi-grid" id="overview-kpis">
+      <div class="loading"><div class="spinner"></div>Loading…</div>
+    </div>
+    <div class="two-col">
+      <div class="section">
+        <div class="section-header"><h2>🚨 Key Concerns</h2></div>
+        <div class="section-body">
+          <ul class="concern-list" id="concerns-list">
+            <div class="no-data">Loading concerns…</div>
+          </ul>
+        </div>
+      </div>
+      <div class="section">
+        <div class="section-header"><h2>Manager Health Summary</h2></div>
+        <div class="section-body">
+          <table id="manager-summary-table">
+            <thead><tr><th>Manager</th><th>Avail</th><th>Incidents</th><th>Quality</th></tr></thead>
+            <tbody><tr><td colspan="4" class="no-data">Loading…</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- AVAILABILITY -->
+  <div class="tab-content" id="tab-availability">
+    <div class="kpi-grid" id="avail-kpis"></div>
+    <div class="section">
+      <div class="section-header"><h2>Manager Breakdown</h2></div>
+      <div class="section-body">
+        <table id="avail-manager-table">
+          <thead><tr><th>Status</th><th>Manager</th><th>Criteria</th><th>Availability %</th><th>% Above Target</th></tr></thead>
+          <tbody><tr><td colspan="5" class="no-data">Loading…</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="section">
+      <div class="section-header"><h2>🔴 Assets Not Meeting Target</h2><span id="failing-assets-count" style="font-size:12px;color:var(--muted)"></span></div>
+      <div class="section-body">
+        <table id="failing-assets-table">
+          <thead><tr><th>Asset</th><th>Tier</th><th>Manager</th><th>Criteria</th><th>Measure</th><th>Target</th><th>Remediation</th></tr></thead>
+          <tbody><tr><td colspan="7" class="no-data">Loading…</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- INCIDENTS -->
+  <div class="tab-content" id="tab-incidents">
+    <div class="kpi-grid" id="incident-kpis"></div>
+    <div class="section">
+      <div class="section-header"><h2>Incident Leaderboard by Manager</h2></div>
+      <div class="section-body">
+        <table id="incidents-table">
+          <thead><tr><th>Manager</th><th>MTTD</th><th>MTTR</th><th># Incidents</th><th># Outages</th><th>Status</th></tr></thead>
+          <tbody><tr><td colspan="6" class="no-data">Loading…</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- QUALITY -->
+  <div class="tab-content" id="tab-quality">
+    <div class="kpi-grid" id="quality-kpis"></div>
+    <div class="section">
+      <div class="section-header"><h2>OOSLA Defects by Manager</h2></div>
+      <div class="section-body">
+        <table id="quality-table">
+          <thead><tr><th>Manager</th><th>Total OOSLA</th><th>P0</th><th>P1</th><th>P2</th><th>P3</th><th>Oldest (days past SLA)</th></tr></thead>
+          <tbody><tr><td colspan="7" class="no-data">Loading…</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="section">
+      <div class="section-header"><h2>Code Coverage</h2></div>
+      <div class="section-body">
+        <table id="coverage-table">
+          <thead><tr><th>Asset</th><th>Coverage %</th><th>Target</th><th>Status</th></tr></thead>
+          <tbody><tr><td colspan="4" class="no-data">Loading…</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- PERFORMANCE -->
+  <div class="tab-content" id="tab-performance">
+    <div class="kpi-grid" id="perf-kpis"></div>
+    <div class="section">
+      <div class="section-header"><h2>Web Performance by Asset</h2></div>
+      <div class="section-body">
+        <table id="perf-table">
+          <thead><tr><th>Asset</th><th>Manager</th><th>Page Ready %</th><th>Interaction Latency %</th><th>Status</th></tr></thead>
+          <tbody><tr><td colspan="5" class="no-data">Loading…</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- VELOCITY -->
+  <div class="tab-content" id="tab-velocity">
+    <div class="kpi-grid" id="velocity-kpis"></div>
+    <div class="two-col">
+      <div class="section">
+        <div class="section-header"><h2>PR Insights</h2></div>
+        <div class="section-body">
+          <table id="pr-table">
+            <thead><tr><th>Period</th><th>Velocity</th><th>Merge Rate</th><th>Time to Merge</th><th>Status</th></tr></thead>
+            <tbody><tr><td colspan="5" class="no-data">Loading…</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="section">
+        <div class="section-header"><h2>Release Insights</h2></div>
+        <div class="section-body">
+          <table id="release-table">
+            <thead><tr><th>Period</th><th>% Assets Released</th><th>Velocity</th><th>Status</th></tr></thead>
+            <tbody><tr><td colspan="4" class="no-data">Loading…</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SECURITY -->
+  <div class="tab-content" id="tab-security">
+    <div class="kpi-grid" id="security-kpis"></div>
+    <div class="section">
+      <div class="section-header"><h2>Restack / Exploitability</h2></div>
+      <div class="section-body">
+        <table id="restack-table">
+          <thead><tr><th>Asset</th><th>Manager</th><th>Exploitable CVEs</th><th>Restack Status</th><th>Days Overdue</th></tr></thead>
+          <tbody><tr><td colspan="5" class="no-data">Loading…</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script>
+const REFRESH_MS = 15 * 60 * 1000;
+let currentTimeframe = '7 Days';
+let allData = null;
+
+function setTimeframe(tf) {
+  currentTimeframe = tf;
+  document.getElementById('btn-7d').classList.toggle('active', tf === '7 Days');
+  document.getElementById('btn-30d').classList.toggle('active', tf === '30 Days');
+  if (allData) renderAll(allData);
+}
+
+function getFrame(data) {
+  // data may have top-level keys or per-timeframe keys
+  if (data['7 Days'] || data['30 Days']) {
+    return data[currentTimeframe] || data['7 Days'] || data['30 Days'] || {};
+  }
+  return data;
+}
+
+function showTab(name) {
+  document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('nav button').forEach(el => el.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+  event.target.classList.add('active');
+}
+
+function statusPill(status) {
+  if (!status) return '';
+  const s = status.toUpperCase();
+  if (s.includes('CRITICAL') || s.includes('RED')) return `<span class="pill red">${status}</span>`;
+  if (s.includes('RISK') || s.includes('YELLOW') || s.includes('AT RISK')) return `<span class="pill yellow">${status}</span>`;
+  if (s.includes('GOOD') || s.includes('GREEN')) return `<span class="pill green">${status}</span>`;
+  return `<span class="pill blue">${status}</span>`;
+}
+
+function colorClass(status) {
+  if (!status) return '';
+  const s = status.toUpperCase();
+  if (s.includes('CRITICAL') || s.includes('RED')) return 'red';
+  if (s.includes('RISK') || s.includes('YELLOW') || s.includes('AT RISK')) return 'yellow';
+  if (s.includes('GOOD') || s.includes('GREEN')) return 'green';
+  return 'blue';
+}
+
+function kpiCard(label, value, sub, cls) {
+  return `<div class="kpi-card ${cls||''}">
+    <div class="label">${label}</div>
+    <div class="value">${value}</div>
+    ${sub ? `<div class="sub">${sub}</div>` : ''}
+  </div>`;
+}
+
+function noData(msg) { return `<tr><td colspan="99" class="no-data">${msg||'No data yet — pending next scheduled run.'}</td></tr>`; }
+function noDataDiv(msg) { return `<div class="no-data" style="padding:40px 0">${msg||'No data yet — pending next scheduled run.'}</div>`; }
+
+function renderOverview(data) {
+  const av = data.availability || {};
+  const inc = data.incidents || {};
+  const qual = data.quality || {};
+  const vel = data.velocity || {};
+
+  const avMet = av.assets_meeting || 0;
+  const avTotal = av.assets_total || 0;
+  const avPct = avTotal ? Math.round(avMet/avTotal*100) : null;
+  const avCls = avPct === null ? 'blue' : avPct >= 90 ? 'green' : avPct >= 75 ? 'yellow' : 'red';
+
+  document.getElementById('overview-kpis').innerHTML = [
+    kpiCard('Assets Meeting Avail', avPct !== null ? `${avPct}%` : '—', avTotal ? `${avMet} / ${avTotal} assets` : 'pending', avCls),
+    kpiCard('Incidents (6mo)', inc.total_incidents ?? '—', `MTTR: ${inc.avg_mttr ?? '—'}`, inc.total_incidents == null ? 'blue' : inc.total_incidents > 10 ? 'red' : 'green'),
+    kpiCard('OOSLA Defects', qual.total_oosla ?? '—', `P0/P1: ${qual.p0_p1 ?? '—'}`, qual.total_oosla == null ? 'blue' : qual.total_oosla > 0 ? 'red' : 'green'),
+    kpiCard('PR Velocity', vel.pr_velocity ?? '—', 'PRs/day (MTD)', vel.pr_velocity == null ? 'blue' : parseFloat(vel.pr_velocity) >= 3 ? 'green' : parseFloat(vel.pr_velocity) >= 2.4 ? 'yellow' : 'red'),
+    kpiCard('Release Velocity', vel.release_velocity ?? '—', 'MTD', vel.release_velocity == null ? 'blue' : parseFloat(vel.release_velocity) >= 2 ? 'green' : 'red'),
+    kpiCard('Code Coverage', qual.avg_coverage ?? '—', 'avg across assets', qual.avg_coverage == null ? 'blue' : parseFloat(qual.avg_coverage) >= 85 ? 'green' : 'red'),
+  ].join('');
+
+  const concerns = data.concerns || [];
+  document.getElementById('concerns-list').innerHTML = concerns.length
+    ? concerns.map(c => `<li><span class="icon">${c.icon||'⚠️'}</span><span>${c.text}</span></li>`).join('')
+    : '<li class="no-data">No critical concerns detected.</li>';
+
+  // Manager health summary
+  const mgrs = av.manager_breakdown || [];
+  const byMgr = {};
+  mgrs.forEach(r => { if (!byMgr[r.manager]) byMgr[r.manager] = r.status; else if (r.status === 'CRITICAL') byMgr[r.manager] = 'CRITICAL'; });
+  const summaryRows = Object.entries(byMgr).map(([m, s]) => `<tr><td>${m}</td><td>${statusPill(s)}</td><td>—</td><td>—</td></tr>`).join('');
+  document.getElementById('manager-summary-table').querySelector('tbody').innerHTML = summaryRows || noData();
+}
+
+function renderAvailability(data) {
+  const av = data.availability || {};
+  const avMet = av.assets_meeting || 0;
+  const avTotal = av.assets_total || 0;
+  const avPct = avTotal ? Math.round(avMet/avTotal*100) : 0;
+
+  document.getElementById('avail-kpis').innerHTML = [
+    kpiCard('Total Assets', avTotal, '7-day window', 'blue'),
+    kpiCard('Meeting Target', `${avPct}%`, `${avMet} assets`, avPct >= 90 ? 'green' : avPct >= 75 ? 'yellow' : 'red'),
+    kpiCard('Not Meeting', `${avTotal - avMet}`, 'assets below target', avTotal - avMet > 0 ? 'red' : 'green'),
+  ].join('');
+
+  const mgrs = av.manager_breakdown || [];
+  document.getElementById('avail-manager-table').querySelector('tbody').innerHTML = mgrs.length
+    ? mgrs.map(r => `<tr>
+        <td>${statusPill(r.status)}</td>
+        <td>${r.manager}</td>
+        <td>${r.criteria}</td>
+        <td><strong>${r.availability_pct}</strong></td>
+        <td>${r.pct_above_target}</td>
+      </tr>`).join('')
+    : '<tr><td colspan="5" class="no-data">No data</td></tr>';
+
+  const failing = av.failing_assets || [];
+  document.getElementById('failing-assets-count').textContent = `${failing.length} assets`;
+  document.getElementById('failing-assets-table').querySelector('tbody').innerHTML = failing.length
+    ? failing.map(r => `<tr>
+        <td style="font-family:monospace;font-size:12px">${r.asset}</td>
+        <td>${r.tier||'—'}</td>
+        <td>${r.manager}</td>
+        <td>${r.criteria}</td>
+        <td><strong>${r.measure}</strong></td>
+        <td>${r.target}</td>
+        <td style="font-size:12px;color:var(--muted)">${r.remediation||'—'}</td>
+      </tr>`).join('')
+    : '<tr><td colspan="7" class="no-data">No failing assets</td></tr>';
+}
+
+function renderIncidents(data) {
+  const inc = data.incidents || {};
+  document.getElementById('incident-kpis').innerHTML = [
+    kpiCard('Total Incidents', inc.total_incidents ?? '—', '6-month lookback', inc.total_incidents == null ? 'blue' : inc.total_incidents > 10 ? 'red' : 'green'),
+    kpiCard('Avg MTTD', inc.avg_mttd ?? '—', 'target ≤5 min (T1)', 'blue'),
+    kpiCard('Avg MTTR', inc.avg_mttr ?? '—', 'target ≤20 min (T1)', 'blue'),
+    kpiCard('Outages', inc.total_outages ?? '—', '', inc.total_outages == null ? 'blue' : inc.total_outages > 0 ? 'red' : 'green'),
+  ].join('');
+
+  const rows = inc.leaderboard || [];
+  document.getElementById('incidents-table').querySelector('tbody').innerHTML = rows.length
+    ? rows.map(r => `<tr>
+        <td>${r.manager}</td>
+        <td>${r.mttd ?? '—'}</td>
+        <td>${r.mttr ?? '—'}</td>
+        <td>${r.incident_count ?? '—'}</td>
+        <td>${r.outage_count ?? '—'}</td>
+        <td>${statusPill(r.status)}</td>
+      </tr>`).join('')
+    : noData('No incident data yet — pending next scheduled run.');
+}
+
+function renderQuality(data) {
+  const qual = data.quality || {};
+  document.getElementById('quality-kpis').innerHTML = [
+    kpiCard('OOSLA Defects', qual.total_oosla ?? '—', 'all priorities', qual.total_oosla == null ? 'blue' : qual.total_oosla > 0 ? 'red' : 'green'),
+    kpiCard('P0 / P1', qual.p0_p1 ?? '—', 'critical defects', qual.p0_p1 == null ? 'blue' : qual.p0_p1 > 0 ? 'red' : 'green'),
+    kpiCard('Avg Code Coverage', qual.avg_coverage ?? '—', 'target ≥85%', qual.avg_coverage == null ? 'blue' : parseFloat(qual.avg_coverage) >= 85 ? 'green' : 'red'),
+  ].join('');
+
+  const rows = qual.oosla_by_manager || [];
+  document.getElementById('quality-table').querySelector('tbody').innerHTML = rows.length
+    ? rows.map(r => `<tr>
+        <td>${r.manager}</td>
+        <td><strong>${r.total_oosla}</strong></td>
+        <td>${r.p0 ?? 0}</td><td>${r.p1 ?? 0}</td><td>${r.p2 ?? 0}</td><td>${r.p3 ?? 0}</td>
+        <td>${r.oldest_days_past_sla ?? '—'}</td>
+      </tr>`).join('')
+    : noData('No OOSLA defect data yet — pending next scheduled run.');
+
+  const cov = qual.coverage_assets || [];
+  document.getElementById('coverage-table').querySelector('tbody').innerHTML = cov.length
+    ? cov.map(r => `<tr>
+        <td style="font-family:monospace;font-size:12px">${r.asset}</td>
+        <td>
+          <div style="display:flex;align-items:center;gap:8px">
+            <div class="progress-bar" style="width:80px"><div class="fill" style="width:${r.coverage_pct}%;background:${parseFloat(r.coverage_pct)>=85?'var(--green)':'var(--red)'}"></div></div>
+            ${r.coverage_pct}%
+          </div>
+        </td>
+        <td>85%</td>
+        <td>${statusPill(parseFloat(r.coverage_pct)>=85?'Good':'Below Target')}</td>
+      </tr>`).join('')
+    : noData('No coverage data yet — pending next scheduled run.');
+}
+
+function renderPerformance(data) {
+  const perf = data.performance || {};
+  document.getElementById('perf-kpis').innerHTML = [
+    kpiCard('Avg Page Ready', perf.avg_page_ready ?? '—', 'target ≥95%', perf.avg_page_ready == null ? 'blue' : parseFloat(perf.avg_page_ready) >= 95 ? 'green' : 'red'),
+    kpiCard('Avg Interaction Latency', perf.avg_interaction_latency ?? '—', 'target ≥95%', perf.avg_interaction_latency == null ? 'blue' : parseFloat(perf.avg_interaction_latency) >= 95 ? 'green' : 'red'),
+  ].join('');
+
+  const rows = perf.assets || [];
+  document.getElementById('perf-table').querySelector('tbody').innerHTML = rows.length
+    ? rows.map(r => `<tr>
+        <td style="font-family:monospace;font-size:12px">${r.asset}</td>
+        <td>${r.manager}</td>
+        <td>${r.page_ready_pct ?? '—'}</td>
+        <td>${r.interaction_latency_pct ?? '—'}</td>
+        <td>${statusPill(r.status)}</td>
+      </tr>`).join('')
+    : noData('No performance data yet — pending next scheduled run.');
+}
+
+function renderVelocity(data) {
+  const vel = data.velocity || {};
+  document.getElementById('velocity-kpis').innerHTML = [
+    kpiCard('PR Velocity (MTD)', vel.pr_velocity ?? '—', 'target ≥3.00/day', vel.pr_velocity == null ? 'blue' : parseFloat(vel.pr_velocity) >= 3 ? 'green' : parseFloat(vel.pr_velocity) >= 2.4 ? 'yellow' : 'red'),
+    kpiCard('Release Velocity (MTD)', vel.release_velocity ?? '—', 'target ≥2.00', vel.release_velocity == null ? 'blue' : parseFloat(vel.release_velocity) >= 2 ? 'green' : 'red'),
+    kpiCard('Time to Merge', vel.time_to_merge ?? '—', '', 'blue'),
+  ].join('');
+
+  const pr = vel.pr_periods || [];
+  document.getElementById('pr-table').querySelector('tbody').innerHTML = pr.length
+    ? pr.map(r => `<tr>
+        <td>${r.period}</td><td>${r.velocity}</td><td>${r.merge_rate ?? '—'}</td>
+        <td>${r.time_to_merge ?? '—'}</td><td>${statusPill(r.status)}</td>
+      </tr>`).join('')
+    : noData('No PR data yet — pending next scheduled run.');
+
+  const rel = vel.release_periods || [];
+  document.getElementById('release-table').querySelector('tbody').innerHTML = rel.length
+    ? rel.map(r => `<tr>
+        <td>${r.period}</td><td>${r.pct_released}</td>
+        <td>${r.velocity}</td><td>${statusPill(r.status)}</td>
+      </tr>`).join('')
+    : noData('No release data yet — pending next scheduled run.');
+}
+
+function renderSecurity(data) {
+  const sec = data.security || {};
+  document.getElementById('security-kpis').innerHTML = [
+    kpiCard('Exploitable CVEs', sec.exploitable_cves ?? '—', '', sec.exploitable_cves == null ? 'blue' : sec.exploitable_cves > 0 ? 'red' : 'green'),
+    kpiCard('Non-compliant Assets', sec.non_compliant ?? '—', 'restack overdue', sec.non_compliant == null ? 'blue' : sec.non_compliant > 0 ? 'red' : 'green'),
+  ].join('');
+
+  const rows = sec.assets || [];
+  document.getElementById('restack-table').querySelector('tbody').innerHTML = rows.length
+    ? rows.map(r => `<tr>
+        <td style="font-family:monospace;font-size:12px">${r.asset}</td>
+        <td>${r.manager}</td>
+        <td>${r.exploitable_cves ?? 0}</td>
+        <td>${statusPill(r.restack_status)}</td>
+        <td>${r.days_overdue ?? '—'}</td>
+      </tr>`).join('')
+    : noData('No security data yet — pending next scheduled run.');
+}
+
+function renderAll(data) {
+  const frame = getFrame(data);
+  renderOverview(frame);
+  renderAvailability(frame);
+  renderIncidents(frame);
+  renderQuality(frame);
+  renderPerformance(frame);
+  renderVelocity(frame);
+  renderSecurity(frame);
+}
+
+function loadData() {
+  try {
+    const el = document.getElementById('dashboard-data');
+    if (!el || !el.textContent.trim() || el.textContent.trim() === 'null') {
+      throw new Error('No data yet — the scheduled task has not run yet. Click "Run now" in the Scheduled sidebar.');
+    }
+    allData = JSON.parse(el.textContent);
+    document.getElementById('error-banner').style.display = 'none';
+    const ts = allData.generated_at || (allData['7 Days'] || allData['30 Days'] || {}).generated_at;
+    document.getElementById('last-updated').textContent = 'Last updated: ' + new Date(ts).toLocaleString();
+    renderAll(allData);
+  } catch (e) {
+    const banner = document.getElementById('error-banner');
+    banner.style.display = 'block';
+    banner.textContent = e.message;
+  }
+}
+
+function updateCountdown() {
+  if (!window._nextRefresh) return;
+  const diff = Math.max(0, window._nextRefresh - Date.now());
+  const m = Math.floor(diff / 60000);
+  const s = Math.floor((diff % 60000) / 1000);
+  document.getElementById('next-refresh').textContent = `Next refresh in ${m}m ${s}s`;
+}
+
+function scheduleRefresh() {
+  window._nextRefresh = Date.now() + REFRESH_MS;
+  setInterval(updateCountdown, 1000);
+  setTimeout(() => { loadData(); scheduleRefresh(); }, REFRESH_MS);
+}
+
+loadData();
+scheduleRefresh();
+</script>
+</body>
+</html>
